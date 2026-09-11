@@ -21,3 +21,17 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Python / ML backend
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# datasets and model artifacts are reproducible from scripts
+api/data/
+api/artifacts/
+
+# secrets (NOT just .env.local -- see docs/design/ai-recommender.md §2.5)
+.env
