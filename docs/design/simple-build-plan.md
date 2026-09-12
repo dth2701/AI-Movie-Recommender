@@ -49,7 +49,7 @@ Seven files. Roughly 400 lines of Python total.
 ```
 api/
 ├── download_data.py    # ~30 lines  urlretrieve + unzip MovieLens
-├── train.py            # ~60 lines  ratings.csv → model.npz + catalog.csv
+├── train.py            # ~180 lines ratings.csv → model.npz + catalog.csv
 ├── evaluate.py         # ~60 lines  prints Recall@20: model vs popularity
 ├── recommend.py        # ~50 lines  the model, as plain functions
 ├── main.py             # ~60 lines  FastAPI, 3 endpoints
@@ -68,7 +68,7 @@ scores over the whole catalog are **one sparse matrix-vector product**:
 
 ```python
 # r: sparse vector of the user's ratings, centered so dislikes push away
-r = user_ratings - 3.0          # 5★ → +2.0,  1★ → -2.0
+r = user_ratings - shrunk_user_mean(r)   # see the note below
 scores = S.dot(r)               # that's the entire recommender
 scores[already_rated] = -np.inf
 top = np.argsort(-scores)[:20]
@@ -82,6 +82,22 @@ No ALS, no fold-in, no linear solve, no cold-start special case — a new user w
 > less. Subtracting a midpoint is what makes a dislike push the recommendation
 > away. This is the bug you will otherwise spend an evening on, and it's a good
 > thing to be able to explain.
+
+> 📌 **Amended in weekend 2.** This section originally said `r = user_ratings - 3.0`.
+> A fixed midpoint works, but training centers on each user's *own* mean (people
+> rate on different scales — see notebook 01 §2), so serving on a constant leaves
+> a train/serve mismatch to explain away. Both now use a mean shrunk toward the
+> global average:
+>
+> ```
+> mu_u = (Σ ratings + m · 3.5016) / (n + m)        m = 5
+> ```
+>
+> For a MovieLens user this lands a median of 0.018 from their plain mean, so
+> training is unchanged. It earns its keep at serve time: a new user who rates
+> three films 5★ has a plain mean of 5.0, which would center their whole vector
+> to zero and return nothing. One formula in `train.py`, `evaluate.py` and
+> `recommend.py`. Details in [`api/README.md`](../../api/README.md#weekend-2--the-model).
 
 ### Three endpoints
 
